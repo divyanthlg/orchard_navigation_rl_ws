@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>orchard_worlds</name>
+  <version>0.0.1</version>
+  <description>Orchard simulation worlds for Warthog</description>
+  <maintainer email="divyanthlg@gmail.com">User</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>clearpath_gz</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <gazebo_ros gazebo_model_path="${prefix}/models"/>
+  </export>
+</package>

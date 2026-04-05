@@ -1,0 +1,113 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="orchard_world">
+    <physics name="default" type="bullet">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.2 0.2 0.15 1</ambient>
+            <diffuse>0.2 0.2 0.15 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Orchard Ground Mesh -->
+    <model name="orchard_ground">
+      <static>true</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="ground_link">
+        <collision name="ground_collision">
+          <geometry>
+            <mesh>
+              <uri>file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_ground_collision.obj</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="ground_visual">
+          <geometry>
+            <mesh>
+              <uri>file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_ground_visual.dae</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.4 1</ambient>
+            <diffuse>0.6 0.6 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Orchard Trunks -->
+    <model name="orchard_trunks">
+      <static>true</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="trunks_link">
+        <visual name="trunks_visual">
+          <geometry>
+            <mesh>
+              <uri>file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_trunks.dae</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Orchard Leaves -->
+    <model name="orchard_leaves">
+      <static>true</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="leaves_link">
+        <visual name="leaves_visual">
+          <geometry>
+            <mesh>
+              <uri>file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_leaves.dae</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
