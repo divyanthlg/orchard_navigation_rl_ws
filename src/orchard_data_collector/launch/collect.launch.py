@@ -1,19 +1,12 @@
 """
-Launch: BC Data Collection
-===========================
-Starts recording immediately. Press Ctrl+C to stop.
+Launch: BC Data Collector (runs on laptop)
 
 Usage:
-    # Default (uses Warthog w200_0100 topics)
     ros2 launch orchard_data_collector collect.launch.py
 
-    # Override topics if needed:
-    ros2 launch orchard_data_collector collect.launch.py \
-        image_topic:=/some/other/image \
-        cmd_vel_topic:=/some/other/cmd_vel
-
-    # Override save rate:
-    ros2 launch orchard_data_collector collect.launch.py save_rate_hz:=10.0
+Then in another terminal:
+    ros2 service call /data_collector/toggle_recording std_srvs/srv/SetBool "{data: true}"
+    ros2 service call /data_collector/toggle_recording std_srvs/srv/SetBool "{data: false}"
 """
 
 from launch import LaunchDescription
@@ -25,38 +18,18 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
 
-        # ── Launch arguments ────────────────────────────────────────────
-        DeclareLaunchArgument(
-            'image_topic',
-            default_value='/w200_0100/sensors/camera_0/color/image',
-            description='Camera image topic'),
+        DeclareLaunchArgument('image_topic',
+            default_value='/w200_0100/sensors/camera_0/color/image'),
+        DeclareLaunchArgument('odom_topic',
+            default_value='/w200_0100/platform/odom/filtered'),
+        DeclareLaunchArgument('save_rate_hz', default_value='5.0'),
+        DeclareLaunchArgument('auto_start', default_value='false'),
+        DeclareLaunchArgument('skip_stationary', default_value='false'),
+        DeclareLaunchArgument('image_dir',
+            default_value='/home/divyanthlg/projects/orchard_navigation/vae_stabilityai/data/raw/images'),
+        DeclareLaunchArgument('labels_file',
+            default_value='/home/divyanthlg/projects/orchard_navigation/vae_stabilityai/data/raw/labels.csv'),
 
-        DeclareLaunchArgument(
-            'cmd_vel_topic',
-            default_value='/w200_0100/rc_teleop/cmd_vel',
-            description='RC teleop velocity command topic'),
-
-        DeclareLaunchArgument(
-            'save_rate_hz',
-            default_value='5.0',
-            description='Frames per second to save'),
-
-        DeclareLaunchArgument(
-            'image_dir',
-            default_value='/home/divyanthlg/projects/orchard_navigation/vae_stabilityai/data/raw/images',
-            description='Directory to save images'),
-
-        DeclareLaunchArgument(
-            'labels_file',
-            default_value='/home/divyanthlg/projects/orchard_navigation/vae_stabilityai/data/raw/labels.csv',
-            description='Path to labels CSV'),
-
-        DeclareLaunchArgument(
-            'skip_stationary',
-            default_value='true',
-            description='Skip frames where robot is not moving'),
-
-        # ── Data collector node ─────────────────────────────────────────
         Node(
             package='orchard_data_collector',
             executable='data_collector',
@@ -64,17 +37,18 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True,
             parameters=[{
-                'image_topic': LaunchConfiguration('image_topic'),
-                'cmd_vel_topic': LaunchConfiguration('cmd_vel_topic'),
-                'save_rate_hz': LaunchConfiguration('save_rate_hz'),
-                'image_dir': LaunchConfiguration('image_dir'),
-                'labels_file': LaunchConfiguration('labels_file'),
-                'skip_stationary': LaunchConfiguration('skip_stationary'),
-                'image_width': 256,
-                'image_height': 256,
-                'image_stale_sec': 0.5,
-                'cmd_vel_stale_sec': 2.0,
-                'min_linear_vel': 0.01,
+                'image_topic':        LaunchConfiguration('image_topic'),
+                'odom_topic':         LaunchConfiguration('odom_topic'),
+                'save_rate_hz':       LaunchConfiguration('save_rate_hz'),
+                'auto_start':         LaunchConfiguration('auto_start'),
+                'skip_stationary':    LaunchConfiguration('skip_stationary'),
+                'image_dir':          LaunchConfiguration('image_dir'),
+                'labels_file':        LaunchConfiguration('labels_file'),
+                'image_width':        256,
+                'image_height':       256,
+                'sync_slop_sec':      0.1,
+                'sync_queue_size':    10,
+                'min_linear_vel':     0.01,
             }],
         ),
     ])

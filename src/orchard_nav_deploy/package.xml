@@ -2,8 +2,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>orchard_nav_deploy</name>
-  <version>0.1.0</version>
-  <description>BC policy deployment + DAgger data collection for orchard navigation</description>
+  <version>0.3.0</version>
+  <description>BC policy deploy + DAgger (runs on laptop, drives Warthog over WiFi)</description>
   <maintainer email="divyanthlg@todo.com">divyanthlg</maintainer>
   <license>MIT</license>
 

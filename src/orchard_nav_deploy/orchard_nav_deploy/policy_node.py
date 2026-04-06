@@ -1,17 +1,11 @@
 """
-Policy Node
-=============
-Loads the trained BC policy (VAE encoder + compression head + policy MLP)
-and publishes velocity commands from camera images.
-
-Publishes to /policy/cmd_vel (NOT directly to /cmd_vel).
-The cmd_vel_mux node decides whether policy or human commands reach the robot.
+Policy Node — v0.3 (Laptop Edition)
+=====================================
+Loads the BC policy on the laptop's GPU, subscribes to Warthog camera
+over WiFi, publishes velocity commands to /policy/cmd_vel.
 """
 
-import os
 import sys
-import time
-
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
@@ -20,7 +14,6 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 
 import torch
-import numpy as np
 from cv_bridge import CvBridge
 from torchvision import transforms
 
@@ -29,8 +22,7 @@ class PolicyNode(Node):
     def __init__(self):
         super().__init__('policy_node')
 
-        # ── Parameters ──────────────────────────────────────────────────
-        self.declare_parameter('image_topic', '/camera/color/image_raw')
+        self.declare_parameter('image_topic', '/w200_0100/sensors/camera_0/color/image')
         self.declare_parameter('model_project_path',
             '/home/divyanthlg/projects/orchard_navigation/vae_stabilityai')
         self.declare_parameter('checkpoint_path',
@@ -45,7 +37,6 @@ class PolicyNode(Node):
         self.declare_parameter('max_angular_vel', 0.5)
         self.declare_parameter('inference_rate_hz', 10.0)
 
-        # Read params
         image_topic = self.get_parameter('image_topic').value
         model_project_path = self.get_parameter('model_project_path').value
         checkpoint_path = self.get_parameter('checkpoint_path').value
@@ -59,8 +50,6 @@ class PolicyNode(Node):
         self.max_angular_vel = self.get_parameter('max_angular_vel').value
         inference_rate = self.get_parameter('inference_rate_hz').value
 
-        # ── Load model ──────────────────────────────────────────────────
-        # Add the project to Python path so we can import the models
         sys.path.insert(0, model_project_path)
         from models import OrchardNavModel
 
@@ -78,7 +67,6 @@ class PolicyNode(Node):
         self.model.eval()
         self.get_logger().info('Model loaded successfully')
 
-        # ── Preprocessing ───────────────────────────────────────────────
         self.bridge = CvBridge()
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
@@ -87,27 +75,24 @@ class PolicyNode(Node):
             transforms.Normalize([0.5], [0.5]),
         ])
 
-        # ── State ───────────────────────────────────────────────────────
         self.latest_image = None
         self.inference_count = 0
 
-        # ── Subscribers ─────────────────────────────────────────────────
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
         )
+
         self.image_sub = self.create_subscription(
             Image, image_topic, self._image_cb, sensor_qos)
-
-        # ── Publishers ──────────────────────────────────────────────────
         self.cmd_pub = self.create_publisher(Twist, '/policy/cmd_vel', 10)
         self.active_pub = self.create_publisher(Bool, '/policy/active', 10)
 
-        # ── Inference timer ─────────────────────────────────────────────
         self.timer = self.create_timer(1.0 / inference_rate, self._inference_tick)
 
-        self.get_logger().info(f'Policy node ready — publishing to /policy/cmd_vel at {inference_rate} Hz')
+        self.get_logger().info(
+            f'Policy node ready — {inference_rate} Hz → /policy/cmd_vel')
 
     def _image_cb(self, msg: Image):
         self.latest_image = msg
@@ -115,26 +100,22 @@ class PolicyNode(Node):
     @torch.no_grad()
     def _inference_tick(self):
         if self.latest_image is None:
+            self.get_logger().warn('No image yet', throttle_duration_sec=3.0)
             return
 
         try:
-            # Convert ROS image → tensor
             cv_image = self.bridge.imgmsg_to_cv2(self.latest_image, 'rgb8')
             tensor = self.transform(cv_image).unsqueeze(0).to(self.device)
-
-            # Run model
             action = self.model(tensor).squeeze(0).cpu().numpy()
 
-            # Publish cmd_vel
             twist = Twist()
             twist.linear.x = float(action[0] * self.max_linear_vel)
             twist.angular.z = float(action[1] * self.max_angular_vel)
             self.cmd_pub.publish(twist)
 
-            # Signal that policy is active
-            active_msg = Bool()
-            active_msg.data = True
-            self.active_pub.publish(active_msg)
+            active = Bool()
+            active.data = True
+            self.active_pub.publish(active)
 
             self.inference_count += 1
             if self.inference_count % 100 == 0:
@@ -152,13 +133,17 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        # Publish zero velocity on shutdown
-        stop = Twist()
-        node.cmd_pub.publish(stop)
-        node.get_logger().info('Policy node stopped — zero velocity sent')
+        pass
     finally:
+        try:
+            stop = Twist()
+            node.cmd_pub.publish(stop)
+            node.get_logger().info('Policy stopped — zero velocity sent')
+        except Exception:
+            pass
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

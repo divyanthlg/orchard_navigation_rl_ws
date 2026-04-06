@@ -13,7 +13,7 @@ NUM_ROWS = 4
 TREES_PER_ROW = 20
 NUM_TREE_MODELS = 16
 
-MESH_DIR = "file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model"
+MESH_DIR = "file:///home/administrator/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model"
 
 OUTPUT_FILE = "worlds/orchard_4rows_20trees.sdf"
 
@@ -112,7 +112,7 @@ sdf_header = """<?xml version="1.0" ?>
         <collision name="terrain_collision">
           <geometry>
             <mesh>
-              <uri>file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_world.dae</uri>
+              <uri>file:///home/administrator/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_world.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -120,7 +120,7 @@ sdf_header = """<?xml version="1.0" ?>
         <visual name="terrain_visual">
           <geometry>
             <mesh>
-              <uri>file:///home/divyanthlg/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_world.dae</uri>
+              <uri>file:///home/administrator/ros2/orchard_navigation_rl_ws/src/orchard_worlds/models/orchard_model/orchard_world.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
