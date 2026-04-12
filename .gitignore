@@ -2,18 +2,21 @@
 build/
 install/
 log/
+
+# Data (regenerated from data collection or too large)
+data/
+checkpoints/
+models/
+
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
+*.pyo
 *.egg-info/
 .pytest_cache/
 
-# IDE
+# Editor / OS
 .vscode/
 .idea/
 *.swp
-
-# OS
 .DS_Store
-Thumbs.db
