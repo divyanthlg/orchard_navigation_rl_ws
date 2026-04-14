@@ -178,7 +178,7 @@ ros2 launch orchard_bc_training bc_deploy.launch.py \
 **Published:** `/bc_policy/cmd_vel`, `/bc_policy/active`, `/w200_0100/cmd_vel`,
 `/bc_mux/active_source`, `/bc_viz/image`.
 
-**Subscribed:** `/w200_0100/sensors/camera_0/color/image`,
+**Subscribed:** `/camera/camera/color/image_raw`,
 `/w200_0100/platform/odom/filtered`, `/w200_0100/rc_teleop/cmd_vel`.
 
 **Services:** `/bc_data_collector/toggle_recording`,

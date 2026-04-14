@@ -37,7 +37,7 @@ class BCDataCollectorNode(Node):
         super().__init__('bc_data_collector')
 
         self.declare_parameter('image_topic',
-            '/w200_0100/sensors/camera_0/color/image')
+            '/camera/camera/color/image_raw')
         self.declare_parameter('odom_topic',
             '/w200_0100/platform/odom/filtered')
         self.declare_parameter('image_dir',

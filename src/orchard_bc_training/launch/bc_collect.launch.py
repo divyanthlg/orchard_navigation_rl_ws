@@ -25,7 +25,7 @@ def generate_launch_description():
         SetEnvironmentVariable('TRANSFORMERS_OFFLINE', '1'),
 
         DeclareLaunchArgument('image_topic',
-            default_value='/w200_0100/sensors/camera_0/color/image'),
+            default_value='/camera/camera/color/image_raw'),
         DeclareLaunchArgument('odom_topic',
             default_value='/w200_0100/platform/odom/filtered'),
         DeclareLaunchArgument('save_rate_hz', default_value='2.0'),
