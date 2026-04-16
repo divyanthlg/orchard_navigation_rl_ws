@@ -14,9 +14,8 @@ from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
 
-from orchard_bc_training.models import OrchardNavModel
-from orchard_bc_training.vae_resolve import resolve_vae_id, VAE_LATENT_SHAPE
-
+from orchard_bc_training.models import OrchardNavModel, VAE_LATENT_SHAPE
+from orchard_bc_training.vae_resolve import resolve_vae_id
 
 def main():
     ap = argparse.ArgumentParser()
