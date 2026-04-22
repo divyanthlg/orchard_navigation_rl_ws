@@ -1,20 +1,21 @@
 """
-BC Visualization Node — v0.7
-==============================
-Subscribes to the camera, the policy command, the mux output (actual cmd sent
-to the robot), and odom. Overlays two horizontal bars near the bottom of the
-frame showing:
+BC Visualization Node — v0.7.2  (compressed image input)
+=========================================================
+Subscribes to the camera (CompressedImage), the policy command, the mux output
+(actual cmd sent to the robot), and odom. Overlays two horizontal bars near the
+bottom of the frame showing:
 
   Top bar   — ANGULAR velocity:  blue = policy cmd, white = odom measured
   Bottom bar — LINEAR velocity:   blue = policy cmd, white = odom measured
 
-Republishes the annotated frame to /bc_viz/image for viewing in rqt_image_view.
+Republishes the annotated frame to /bc_viz/image (raw sensor_msgs/Image) for
+viewing in rqt_image_view.
 """
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CompressedImage
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 
@@ -28,7 +29,7 @@ class BCVizNode(Node):
         super().__init__('bc_viz')
 
         self.declare_parameter('image_topic',
-            '/camera/camera/color/image_raw')
+            '/camera/camera/color/image_raw/compressed')
         self.declare_parameter('odom_topic',
             '/w200_0100/platform/odom/filtered')
         self.declare_parameter('policy_cmd_topic', '/bc_policy/cmd_vel')
@@ -56,7 +57,8 @@ class BCVizNode(Node):
             history=HistoryPolicy.KEEP_LAST, depth=1,
         )
 
-        self.create_subscription(Image, image_topic, self._image_cb, sensor_qos)
+        self.create_subscription(
+            CompressedImage, image_topic, self._image_cb, sensor_qos)
         self.create_subscription(Odometry, odom_topic, self._odom_cb, sensor_qos)
         self.create_subscription(Twist, policy_topic, self._policy_cb, 10)
         self.create_subscription(Twist, output_topic, self._mux_cb, 10)
@@ -65,8 +67,8 @@ class BCVizNode(Node):
 
         self.get_logger().info(
             f'BC viz ready\n'
-            f'  Image in:    {image_topic}\n'
-            f'  Image out:   {viz_topic}\n'
+            f'  Image in:    {image_topic} (CompressedImage)\n'
+            f'  Image out:   {viz_topic} (Image, annotated)\n'
             f'  View with:   ros2 run rqt_image_view rqt_image_view {viz_topic}')
 
     # ── callbacks ─────────────────────────────────────────────────────
@@ -77,11 +79,14 @@ class BCVizNode(Node):
         self.odom_lin = float(msg.twist.twist.linear.x)
         self.odom_ang = float(msg.twist.twist.angular.z)
 
-    def _image_cb(self, msg: Image):
+    def _image_cb(self, msg: CompressedImage):
         try:
-            frame = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+            np_arr = np.frombuffer(msg.data, dtype=np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # BGR
+            if frame is None:
+                raise RuntimeError('cv2.imdecode returned None')
         except Exception as e:
-            self.get_logger().error(f'Image conv failed: {e}',
+            self.get_logger().error(f'Image decode failed: {e}',
                                     throttle_duration_sec=2.0)
             return
 

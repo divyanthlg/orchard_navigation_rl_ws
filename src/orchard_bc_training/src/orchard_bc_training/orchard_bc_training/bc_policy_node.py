@@ -1,12 +1,13 @@
 """
-BC Policy Node — v0.7  (in orchard_bc_training)
-=================================================
+BC Policy Node — v0.7.2  (compressed image input)
+==================================================
 Sequence VAE+GRU+MLP policy. Distinct from the v0.6 policy_node in
 orchard_nav_deploy: different node name, different output topic.
 
 - Node name:     bc_policy_node
 - Output topic:  /bc_policy/cmd_vel
 - Active flag:   /bc_policy/active
+- Image input:   sensor_msgs/CompressedImage (JPEG/PNG payload)
 
 Maintains a seq_len=13 ring buffer of VAE latents and per-timestep extras.
 VAE encode at 2 Hz (matches training), GRU+MLP publish at 10 Hz.
@@ -17,14 +18,14 @@ import os
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 
+import cv2
 import torch
 import numpy as np
-from cv_bridge import CvBridge
 from torchvision import transforms
 
 from orchard_bc_training.models import OrchardNavModel
@@ -40,7 +41,7 @@ class BCPolicyNode(Node):
         super().__init__('bc_policy_node')
 
         self.declare_parameter('image_topic',
-            '/camera/camera/color/image_raw')
+            '/camera/camera/color/image_raw/compressed')
         self.declare_parameter('odom_topic',
             '/w200_0100/platform/odom/filtered')
         self.declare_parameter('checkpoint_path', DEFAULT_CHECKPOINT)
@@ -78,7 +79,7 @@ class BCPolicyNode(Node):
         self.model.eval()
         self.get_logger().info(f'Model loaded from {checkpoint_path}')
 
-        self.bridge = CvBridge()
+        # Transform: expects a numpy HxWx3 uint8 RGB image (ToPILImage handles it)
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize((self.image_size, self.image_size)),
@@ -101,7 +102,7 @@ class BCPolicyNode(Node):
             history=HistoryPolicy.KEEP_LAST, depth=1,
         )
         self.image_sub = self.create_subscription(
-            Image, image_topic, self._image_cb, sensor_qos)
+            CompressedImage, image_topic, self._image_cb, sensor_qos)
         self.odom_sub = self.create_subscription(
             Odometry, odom_topic, self._odom_cb, sensor_qos)
 
@@ -115,19 +116,29 @@ class BCPolicyNode(Node):
 
         self.get_logger().info(
             f'BC policy ready\n'
-            f'  Perception: {perception_rate} Hz (VAE encode → ring buffer)\n'
-            f'  Command:    {command_rate} Hz → {output_topic}\n'
-            f'  seq_len:    {self.seq_len} '
+            f'  Image topic: {image_topic} (CompressedImage)\n'
+            f'  Perception:  {perception_rate} Hz (VAE encode → ring buffer)\n'
+            f'  Command:     {command_rate} Hz → {output_topic}\n'
+            f'  seq_len:     {self.seq_len} '
             f'({self.seq_len / perception_rate:.1f} s history)\n'
             f'  Waiting {self.seq_len / perception_rate:.1f}s '
             f'before first real publish.')
 
-    def _image_cb(self, msg: Image):
+    def _image_cb(self, msg: CompressedImage):
         self.latest_image = msg
 
     def _odom_cb(self, msg: Odometry):
         self.cur_lin_odom = float(msg.twist.twist.linear.x)
         self.cur_ang_odom = float(msg.twist.twist.angular.z)
+
+    @staticmethod
+    def _decode_compressed_rgb(msg: CompressedImage):
+        """Decode CompressedImage payload into an HxWx3 RGB uint8 ndarray."""
+        np_arr = np.frombuffer(msg.data, dtype=np.uint8)
+        bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        if bgr is None:
+            return None
+        return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
     @torch.no_grad()
     def _perception_tick(self):
@@ -135,8 +146,10 @@ class BCPolicyNode(Node):
             self.get_logger().warn('No image yet', throttle_duration_sec=3.0)
             return
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(self.latest_image, 'rgb8')
-            tensor = self.transform(cv_image).unsqueeze(0).to(self.device)
+            rgb = self._decode_compressed_rgb(self.latest_image)
+            if rgb is None:
+                raise RuntimeError('cv2.imdecode returned None')
+            tensor = self.transform(rgb).unsqueeze(0).to(self.device)
             latent = self.model.encode_images(tensor).squeeze(0)
         except Exception as e:
             self.get_logger().error(

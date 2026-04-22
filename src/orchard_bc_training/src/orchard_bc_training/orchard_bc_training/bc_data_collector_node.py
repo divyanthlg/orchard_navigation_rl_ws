@@ -1,12 +1,13 @@
 """
-BC Data Collector Node — v0.7  (in orchard_bc_training)
-=========================================================
+BC Data Collector Node — v0.7.3  (compressed image input, dual timestamps)
+===========================================================================
 Separate from the v0.6 data_collector in orchard_data_collector.
 - Node name:          bc_data_collector
 - Service namespace:  /bc_data_collector/...
-- CSV columns:        filename, stamp, linear_vel, angular_vel
+- CSV columns:        filename, stamp, odom_stamp, linear_vel, angular_vel
 - Default rate:       2 Hz
 - Default data dir:   ~/ros2/orchard_navigation_rl_ws/data/raw
+- Image input:        sensor_msgs/CompressedImage (JPEG/PNG payload)
 """
 
 import os
@@ -18,13 +19,13 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
 from nav_msgs.msg import Odometry
 from std_srvs.srv import SetBool, Trigger
 
 import message_filters
 import cv2
-from cv_bridge import CvBridge
+import numpy as np
 
 
 DEFAULT_DATA_DIR = os.path.expanduser(
@@ -37,7 +38,7 @@ class BCDataCollectorNode(Node):
         super().__init__('bc_data_collector')
 
         self.declare_parameter('image_topic',
-            '/camera/camera/color/image_raw')
+            '/camera/camera/color/image_raw/compressed')
         self.declare_parameter('odom_topic',
             '/w200_0100/platform/odom/filtered')
         self.declare_parameter('image_dir',
@@ -66,7 +67,6 @@ class BCDataCollectorNode(Node):
         self.skip_stationary = self.get_parameter('skip_stationary').value
         auto_start           = self.get_parameter('auto_start').value
 
-        self.bridge = CvBridge()
         self.recording = auto_start
         self.lock = threading.Lock()
         self.save_interval = 1.0 / self.save_rate_hz
@@ -81,18 +81,19 @@ class BCDataCollectorNode(Node):
         if not os.path.isfile(self.labels_file):
             with open(self.labels_file, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(['filename', 'stamp', 'linear_vel', 'angular_vel'])
+                writer.writerow(['filename', 'stamp', 'odom_stamp',
+                                 'linear_vel', 'angular_vel'])
             self.get_logger().info(f'Created new labels file: {self.labels_file}')
         else:
             self.get_logger().info(f'Appending to existing labels: {self.labels_file}')
-            self._verify_stamp_column()
+            self._verify_header()
 
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST, depth=1,
         )
         self.image_sub = message_filters.Subscriber(
-            self, Image, self.image_topic, qos_profile=sensor_qos)
+            self, CompressedImage, self.image_topic, qos_profile=sensor_qos)
         self.odom_sub = message_filters.Subscriber(
             self, Odometry, self.odom_topic, qos_profile=sensor_qos)
         self.sync = message_filters.ApproximateTimeSynchronizer(
@@ -109,9 +110,10 @@ class BCDataCollectorNode(Node):
         state = 'RECORDING' if self.recording else 'PAUSED'
         self.get_logger().info('')
         self.get_logger().info('╔══════════════════════════════════════════════════╗')
-        self.get_logger().info(f'║   BC Data Collector v0.7 — {state:<20s} ║')
+        self.get_logger().info(f'║   BC Data Collector v0.7.3 — {state:<18s} ║')
         self.get_logger().info('╠══════════════════════════════════════════════════╣')
         self.get_logger().info(f'║  Image topic:  {self.image_topic}')
+        self.get_logger().info(f'║  Image type:   sensor_msgs/CompressedImage')
         self.get_logger().info(f'║  Odom topic:   {self.odom_topic}')
         self.get_logger().info(f'║  Save rate:    {self.save_rate_hz:.1f} Hz')
         self.get_logger().info(f'║  Image size:   {self.image_width}x{self.image_height}')
@@ -125,15 +127,30 @@ class BCDataCollectorNode(Node):
         self.get_logger().info('║     "{data: true}"                               ║')
         self.get_logger().info('╚══════════════════════════════════════════════════╝')
 
-    def _verify_stamp_column(self):
+    def _verify_header(self):
         with open(self.labels_file, 'r') as f:
             header = f.readline().strip().split(',')
         if 'stamp' not in header:
             self.get_logger().error(
                 'EXISTING labels.csv has no "stamp" column — move it aside '
                 'and start fresh, otherwise training will break.')
+            return
+        if 'odom_stamp' not in header:
+            self.get_logger().error(
+                'EXISTING labels.csv has no "odom_stamp" column (this file '
+                'was created by v0.7.2 or older). Do NOT append to it — the '
+                'columns will misalign. Move it aside and start fresh, or '
+                'run a one-shot migration to add odom_stamp=stamp for old '
+                'rows.')
 
-    def _synced_cb(self, image_msg: Image, odom_msg: Odometry):
+    @staticmethod
+    def _decode_compressed(msg: CompressedImage):
+        """Decode a CompressedImage payload into a BGR cv2 ndarray."""
+        np_arr = np.frombuffer(msg.data, dtype=np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # BGR
+        return img
+
+    def _synced_cb(self, image_msg: CompressedImage, odom_msg: Odometry):
         if not self.recording:
             return
         now = time.monotonic()
@@ -148,9 +165,11 @@ class BCDataCollectorNode(Node):
             return
 
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
+            cv_image = self._decode_compressed(image_msg)
+            if cv_image is None:
+                raise RuntimeError('cv2.imdecode returned None')
         except Exception as e:
-            self.get_logger().error(f'Image conversion failed: {e}')
+            self.get_logger().error(f'Image decode failed: {e}')
             return
 
         if self.image_width > 0 and self.image_height > 0:
@@ -159,6 +178,8 @@ class BCDataCollectorNode(Node):
                 interpolation=cv2.INTER_LANCZOS4)
 
         stamp = image_msg.header.stamp.sec + image_msg.header.stamp.nanosec * 1e-9
+        odom_stamp = (odom_msg.header.stamp.sec
+                      + odom_msg.header.stamp.nanosec * 1e-9)
 
         filename = f'frame_{self.frame_counter:06d}.png'
         filepath = os.path.join(self.image_dir, filename)
@@ -167,7 +188,7 @@ class BCDataCollectorNode(Node):
         with open(self.labels_file, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
-                filename, f'{stamp:.6f}',
+                filename, f'{stamp:.6f}', f'{odom_stamp:.6f}',
                 f'{linear_vel:.6f}', f'{angular_vel:.6f}',
             ])
 

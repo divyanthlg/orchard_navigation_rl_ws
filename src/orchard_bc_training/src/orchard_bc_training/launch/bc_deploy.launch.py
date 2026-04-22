@@ -1,5 +1,5 @@
 """
-Launch: v0.7 BC Policy Deploy (offline-safe, with visualization)
+Launch: v0.7 BC Policy Deploy (offline-safe, compressed image input, with visualization)
 
     ros2 launch orchard_bc_training bc_deploy.launch.py
 
@@ -24,7 +24,7 @@ def generate_launch_description():
         SetEnvironmentVariable('TRANSFORMERS_OFFLINE', '1'),
 
         DeclareLaunchArgument('image_topic',
-            default_value='/camera/camera/color/image_raw'),
+            default_value='/camera/camera/color/image_raw/compressed'),
         DeclareLaunchArgument('odom_topic',
             default_value='/w200_0100/platform/odom/filtered'),
         DeclareLaunchArgument('human_cmd_topic',

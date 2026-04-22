@@ -1,5 +1,5 @@
 """
-Launch: v0.7 BC Data Collector
+Launch: v0.7 BC Data Collector (compressed image input)
 
     ros2 launch orchard_bc_training bc_collect.launch.py
 
@@ -25,7 +25,7 @@ def generate_launch_description():
         SetEnvironmentVariable('TRANSFORMERS_OFFLINE', '1'),
 
         DeclareLaunchArgument('image_topic',
-            default_value='/camera/camera/color/image_raw'),
+            default_value='/camera/camera/color/image_raw/compressed'),
         DeclareLaunchArgument('odom_topic',
             default_value='/w200_0100/platform/odom/filtered'),
         DeclareLaunchArgument('save_rate_hz', default_value='2.0'),

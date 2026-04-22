@@ -89,11 +89,18 @@ def main():
     np.save(latents_out, latents)
     print(f"Saved latents: {latents_out}  shape={latents.shape}")
 
+    has_odom_stamp = "odom_stamp" in rows[0]
+    if not has_odom_stamp:
+        print("NOTE: labels.csv has no odom_stamp column (pre-v0.7.3). "
+              "Writing index.csv with odom_stamp = stamp for back-compat.")
+
     with open(index_out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["idx", "filename", "stamp", "linear_vel", "angular_vel"])
+        w.writerow(["idx", "filename", "stamp", "odom_stamp",
+                    "linear_vel", "angular_vel"])
         for i, r in enumerate(rows):
-            w.writerow([i, r["filename"], r["stamp"],
+            odom_stamp = r["odom_stamp"] if has_odom_stamp else r["stamp"]
+            w.writerow([i, r["filename"], r["stamp"], odom_stamp,
                         r["linear_vel"], r["angular_vel"]])
     print(f"Saved index:   {index_out}")
 

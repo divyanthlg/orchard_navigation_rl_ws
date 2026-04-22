@@ -6,7 +6,7 @@ package_name = 'orchard_bc_training'
 
 setup(
     name=package_name,
-    version='0.7.0',
+    version='0.7.3',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -18,7 +18,8 @@ setup(
     zip_safe=True,
     maintainer='divyanthlg',
     maintainer_email='divyanthlg@todo.com',
-    description='BC training + deploy for orchard navigation (VAE + GRU + MLP)',
+    description='BC training + deploy for orchard navigation (VAE + GRU + MLP). '
+                'Compressed-image input variant.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
