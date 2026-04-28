@@ -29,11 +29,11 @@ class BCVizNode(Node):
         super().__init__('bc_viz')
 
         self.declare_parameter('image_topic',
-            '/camera/camera/color/image_raw/compressed')
+            '/sensors/camera_0/color/compressed')
         self.declare_parameter('odom_topic',
-            '/w200_0100/platform/odom/filtered')
+            '/platform/odom/filtered')
         self.declare_parameter('policy_cmd_topic', '/bc_policy/cmd_vel')
-        self.declare_parameter('output_cmd_topic', '/w200_0100/cmd_vel')
+        self.declare_parameter('output_cmd_topic', '/cmd_vel')
         self.declare_parameter('viz_topic', '/bc_viz/image')
         self.declare_parameter('max_linear_vel',  1.0)   # bar full-scale
         self.declare_parameter('max_angular_vel', 0.5)

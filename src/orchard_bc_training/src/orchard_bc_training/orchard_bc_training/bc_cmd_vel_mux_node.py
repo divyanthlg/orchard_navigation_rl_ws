@@ -2,7 +2,7 @@
 BC Cmd Vel Mux — v0.7  (self-contained inside orchard_bc_training)
 ====================================================================
 Merges /bc_policy/cmd_vel with human RC teleop. Published result goes
-to the Warthog's cmd_vel topic. Independent of orchard_nav_deploy.
+to the robot's cmd_vel topic. Independent of orchard_nav_deploy.
 """
 
 import rclpy
@@ -17,8 +17,8 @@ class BCCmdVelMuxNode(Node):
         super().__init__('bc_cmd_vel_mux')
 
         self.declare_parameter('policy_cmd_topic', '/bc_policy/cmd_vel')
-        self.declare_parameter('human_cmd_topic', '/w200_0100/rc_teleop/cmd_vel')
-        self.declare_parameter('output_cmd_topic', '/w200_0100/cmd_vel')
+        self.declare_parameter('human_cmd_topic', '/rc_teleop/cmd_vel')
+        self.declare_parameter('output_cmd_topic', '/cmd_vel')
         self.declare_parameter('human_timeout_sec', 0.5)
         self.declare_parameter('joy_linear_deadzone', 0.05)
         self.declare_parameter('joy_angular_deadzone', 0.05)

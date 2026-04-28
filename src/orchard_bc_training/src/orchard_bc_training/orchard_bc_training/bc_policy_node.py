@@ -41,9 +41,9 @@ class BCPolicyNode(Node):
         super().__init__('bc_policy_node')
 
         self.declare_parameter('image_topic',
-            '/camera/camera/color/image_raw/compressed')
+            '/sensors/camera_0/color/compressed')
         self.declare_parameter('odom_topic',
-            '/w200_0100/platform/odom/filtered')
+            '/platform/odom/filtered')
         self.declare_parameter('checkpoint_path', DEFAULT_CHECKPOINT)
         self.declare_parameter('vae_model_id', '')  # empty → auto-resolve
         self.declare_parameter('seq_len', 13)

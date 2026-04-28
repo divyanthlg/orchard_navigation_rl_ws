@@ -16,7 +16,7 @@ class BCStatusDisplay(Node):
         self.policy_cmd = Twist()
 
         self.create_subscription(String, '/bc_mux/active_source', self._source_cb, 10)
-        self.create_subscription(Twist, '/w200_0100/cmd_vel', self._cmd_cb, 10)
+        self.create_subscription(Twist, '/cmd_vel', self._cmd_cb, 10)
         self.create_subscription(Twist, '/bc_policy/cmd_vel', self._policy_cb, 10)
 
         self.timer = self.create_timer(0.2, self._display)
